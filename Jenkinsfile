@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         DOCKER_USER = "mahesh2452"
-        IMAGE_NAME = "Bootstrap"
+        IMAGE_NAME = "bootstrap"
         IMAGE_TAG = "latest"
     }
 
@@ -11,7 +11,7 @@ pipeline {
 
         stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/Surya8442/Furniture.git'
+                git branch: 'main', url: 'https://github.com/Mahesh1-code141/Electro_Bootstrap.git'
             }
         }
 
