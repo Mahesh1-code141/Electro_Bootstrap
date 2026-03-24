@@ -36,7 +36,10 @@ pipeline {
 
         stage('Deploy to Kubernetes') {
             steps {
-                sh '/usr/local/bin/kubectl apply -f mahesh.yml'
+                sh '''
+                export KUBECONFIG=$KUBE_CONFIG
+                kubectl apply -f mahesh.yaml
+                '''
             }
         }
     }
