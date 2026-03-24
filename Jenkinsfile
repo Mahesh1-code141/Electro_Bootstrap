@@ -2,84 +2,53 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_IMAGE = "mahesh2452/bootstrap-app"
-        GIT_CREDENTIALS_ID = "Github"
-        GIT_BRANCH = "main"
-
-        // Kubernetes details (store in Jenkins credentials)
-        K8S_SERVER = "https://<K8S_API_SERVER>"
-        K8S_NAMESPACE = "default"
+        DOCKER_USER = "mahesh2452"
+        IMAGE_NAME = "bootstrap"
+        IMAGE_TAG = "latest"
     }
 
     stages {
 
-        stage('Checkout Code') {
+        stage('Checkout') {
             steps {
-                git branch: "${GIT_BRANCH}",
-                    credentialsId: "${GIT_CREDENTIALS_ID}",
-                    url: 'https://github.com/Mahesh1-code141/Electro_Bootstrap.git'
+                git branch: 'main', url: 'https://github.com/Mahesh1-code141/Electro_Bootstrap.git'
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Build Image') {
             steps {
-                script {
-                    docker.build("${DOCKER_IMAGE}:${BUILD_NUMBER}")
+                sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
+            }
+        }
+
+        stage('Push to DockerHub') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'Docker_CRED', usernameVariable: 'USER', passwordVariable: 'PASS')]) {
+                    sh """
+                    echo "$PASS" | docker login -u "$USER" --password-stdin
+                    docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${DOCKER_USER}/${IMAGE_NAME}:${IMAGE_TAG}
+                    docker push ${DOCKER_USER}/${IMAGE_NAME}:${IMAGE_TAG}
+                    """
                 }
             }
         }
 
-        stage('Push Docker Image') {
+        stage('Deploy to Kubernetes') {
             steps {
-                script {
-                    docker.withRegistry('https://index.docker.io/v1/', 'Docker_CRED') {
-                        docker.image("${DOCKER_IMAGE}:${BUILD_NUMBER}").push()
-                    }
-                }
-            }
-        }
-
-        stage('Deploy to Kubernetes (No kubeconfig)') {
-            steps {
-                withCredentials([
-                    string(credentialsId: 'k8s-token', variable: 'K8S_TOKEN'),
-                    file(credentialsId: 'k8s-ca-cert', variable: 'K8S_CA')
-                ]) {
-                    sh '''
-                        kubectl config set-cluster k8s-cluster \
-                          --server=$K8S_SERVER \
-                          --certificate-authority=$K8S_CA
-
-                        kubectl config set-credentials jenkins-user \
-                          --token=$K8S_TOKEN
-
-                        kubectl config set-context jenkins-context \
-                          --cluster=k8s-cluster \
-                          --user=jenkins-user \
-                          --namespace=$K8S_NAMESPACE
-
-                        kubectl config use-context jenkins-context
-
-                        kubectl set image deployment/my-app my-app=${DOCKER_IMAGE}:${BUILD_NUMBER} --record
-                        kubectl apply -f mahesh.yml
-                    '''
-                }
-            }
-        }
-
-        stage('Verify Deployment') {
-            steps {
-                sh "kubectl rollout status deployment/my-app"
+                sh """
+                export KUBECONFIG=/var/lib/jenkins/.kube/config
+                kubectl apply -f mahesh.yml
+                """
             }
         }
     }
 
     post {
         success {
-            echo "Deployment Successful 🚀"
+            echo "Deployment Successful "
         }
         failure {
-            echo "Deployment Failed ❌"
+            echo "Deployment Failed "
         }
     }
 }
