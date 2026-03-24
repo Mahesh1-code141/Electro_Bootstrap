@@ -36,7 +36,8 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 sh """
-                export KUBECONFIG=/var/lib/jenkins/.kube/config
+                export PATH=$PATH:/usr/local/bin
+                kubectl get nodes
                 kubectl apply -f mahesh.yml
                 """
             }
