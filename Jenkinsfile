@@ -4,13 +4,17 @@ pipeline {
     environment {
         DOCKER_IMAGE = "mahesh2452/bootstrap-app"
         KUBE_CONFIG_CREDENTIALS = "kubeconfig-id"
+        GIT_CREDENTIALS_ID = "Github"
+        GIT_BRANCH = "main"   // change if needed (e.g., dev, staging)
     }
 
     stages {
 
         stage('Checkout Code') {
             steps {
-                git 'https://github.com/Mahesh1-code141/Electro_Bootstrap.git'
+                git branch: "${GIT_BRANCH}",
+                    credentialsId: "${GIT_CREDENTIALS_ID}",
+                    url: 'https://github.com/Mahesh1-code141/Electro_Bootstrap.git'
             }
         }
 
