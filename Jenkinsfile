@@ -2,57 +2,53 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_IMAGE = "mahesh2452/electro-app"
-        DOCKER_TAG = "${BUILD_NUMBER}"
-        AWS_REGION = "us-east-1"
-        CLUSTER_NAME = "mycluster1"
+        DOCKER_USER = "mahesh2452"
+        IMAGE_NAME = "Bootstrap"
+        IMAGE_TAG = "latest"
     }
 
     stages {
 
         stage('Checkout') {
             steps {
-                git url: 'https://github.com/Mahesh1-code141/Electro_K8s.git', branch: 'main'
+                git branch: 'main', url: 'https://github.com/Surya8442/Furniture.git'
             }
         }
 
-        stage('Build & Push Image') {
+        stage('Build Image') {
             steps {
-                withCredentials([usernamePassword(
-                    credentialsId: 'Docker_CRED',
-                    usernameVariable: 'USER',
-                    passwordVariable: 'PASS'
-                )]) {
-                    sh '''
-                    docker build -t $DOCKER_IMAGE:$DOCKER_TAG .
-                    echo $PASS | docker login -u $USER --password-stdin
-                    docker push $DOCKER_IMAGE:$DOCKER_TAG
-                    '''
+                sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
+            }
+        }
+
+        stage('Push to DockerHub') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'Docker_CRED', usernameVariable: 'USER', passwordVariable: 'PASS')]) {
+                    sh """
+                    echo "$PASS" | docker login -u "$USER" --password-stdin
+                    docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${DOCKER_USER}/${IMAGE_NAME}:${IMAGE_TAG}
+                    docker push ${DOCKER_USER}/${IMAGE_NAME}:${IMAGE_TAG}
+                    """
                 }
             }
         }
 
-        stage('Deploy to K8s') {
+        stage('Deploy to Kubernetes') {
             steps {
-                withCredentials([
-                    file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG'),
-                    [$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']
-                ]) {
-                    sh '''
-                    aws eks update-kubeconfig --region $AWS_REGION --name $CLUSTER_NAME
-
-                    sed -i "s|IMAGE_PLACEHOLDER|$DOCKER_IMAGE:$DOCKER_TAG|g" k8s/deployment.yaml
-
-                    kubectl apply -f k8s/
-                    '''
-                }
+                sh """
+                export KUBECONFIG=/var/lib/jenkins/.kube/config
+                kubectl apply -f mahesh.yml
+                """
             }
         }
+    }
 
-        stage('Verify') {
-            steps {
-                sh 'kubectl get pods && kubectl get svc'
-            }
+    post {
+        success {
+            echo "Deployment Successful "
+        }
+        failure {
+            echo "Deployment Failed "
         }
     }
 }
