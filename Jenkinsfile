@@ -32,7 +32,6 @@ pipeline {
                 sh '''
                 kubectl apply -f mahesh.yml
                 kubectl rollout status deployment/bootstrap
-                kubectl rollout status deployment/electro-app
                 '''
             }
         }
